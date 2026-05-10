@@ -4,7 +4,7 @@
 
 This repository contains the design documentation for an **Agentic AI system for manufacturing delivery assurance** across a rolling 4-week horizon (W1-W4). The system uses a hybrid approach combining LLMs for classification with traditional optimization for trade-off decisions.
 
-## 📁 Repository Contents
+##  Repository Contents
 
 ### Presentation Materials
 
@@ -25,7 +25,7 @@ This repository contains the design documentation for an **Agentic AI system for
   - Potential interview questions
   - Defense strategies for design decisions
 
-## 🎯 System Design Highlights
+##  System Design Highlights
 
 ### 6-Agent Architecture
 
@@ -52,33 +52,28 @@ This repository contains the design documentation for an **Agentic AI system for
 - **RAG**: Managed vector database with hybrid retrieval (dense + BM25)
 - **Streaming**: Kafka for event-driven data flow
 
-## 🚀 MVP Roadmap (4 Weeks)
+##  MVP Roadmap (4 Weeks)
 
 - **Week 1: Shadow Mode** - Risk detection validation (read-only)
 - **Week 2: Follow-Up Agent** - Auto-ping maintenance for W1 equipment issues
 - **Week 3: Action Pilot** - Generate recommendations with impact analysis
 - **Week 4: Automation** - Auto-execute low-risk actions with full audit trail
 
-## 📊 Success Metrics
+##  Success Metrics
 
 - **Primary**: OTIF improvement, commit accuracy, low false positive rate
 - **Leading**: Detection lead time, expedite reduction, WIP queue time
 - **Agent Performance**: Action closure time, recommendation acceptance, effort saved
 
-## 🎓 Course Concepts Applied
+##  Course Concepts Applied
 
 - **Week 10**: RAG with vector database for historical incident retrieval
 - **Week 12**: Multi-agent orchestration with LangGraph, tool binding with LangChain
 - **Hybrid Approach**: LLMs where they add value (classification), NOT where they don't (optimization, scoring)
 
-## 📝 Notes
+##  Notes
 
 - All metrics and percentages are illustrative - to be calibrated with actual baseline data
 - Vendor-agnostic design - adaptable to any LLM provider, vector DB, or infrastructure
 - PostgreSQL is a technology choice (TimescaleDB extension), not a vendor lock-in
 
----
-
-**Author**: Rashmi K Bhat  
-**Email**: rashmi150398@gmail.com  
-**Purpose**: Interview preparation for AI/Data Scientist role
