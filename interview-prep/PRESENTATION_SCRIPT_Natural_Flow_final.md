@@ -211,11 +211,11 @@ Here's the 4-week rollout. Each week has a gate—I don't advance until I hit it
 
 **Week 1: Shadow Mode**. Deploy infrastructure, turn on Risk Detection in read-only mode logging to staging. Run internal monitoring only. **Gate**: precision high enough—the agent catches most of the risks humans are already seeing. If it can't hit that, it's not ready.
 
-**Week 2: Follow-Up Agent**. Add Follow-Up for W1 equipment issues only. Wire up Slack and Teams, add SLA tracking, start auto-pinging maintenance. Collect feedback from the maintenance team. **Gate**: response rate high enough within SLA.
+**Week 2: Root Cause Classification**. Turn on Cause Classifier with RAG. Risk Detection flags lots, Cause Classifier determines WHY—DOWNTIME, WIP_QUEUE, MATERIAL, etc. Advisory mode only—log classifications, no actions yet. **Gate**: classification accuracy acceptable, over 80 percent match with human judgment.
 
-**Week 3: Action Pilot**. Turn on Cause Classifier with RAG, Trade-Off Engine in advisory mode, CMMS ticketing, and MES flags with approval required. Generate recommendations per day, show impact analysis, execute approved actions. **Gate**: approval rate acceptable.
+**Week 3: Automated Follow-Up**. Add Follow-Up Agent. Based on Cause Classifier output, automatically contact the right owner: DOWNTIME goes to maintenance via Slack, WIP_QUEUE goes to planners, MATERIAL goes to supply chain. Track SLA—15-minute response time, escalate if no response. **Gate**: response rate over 80 percent within SLA.
 
-**Week 4: Automation**. Enable auto-execution for low-risk actions, turn on KPI tracking, full audit trail, real-time dashboard. Measure W1 OTIF improvement, false positive rate, audit cleanliness. Collect planner feedback. **Gate**: OTIF improvement plus low false positives plus clean audit. Go/no-go decision to scale beyond pilot.
+**Week 4: Optimization and Automation**. Turn on Trade-Off Engine in advisory mode, CMMS ticketing for equipment issues, MES flags for lot priority, capacity reallocation recommendations. Enable auto-execution for low-risk actions—flag lot, create ticket. Approval required for high-risk—expedite, reallocate. **Gate**: OTIF improvement plus low false positives plus clean audit. Go/no-go decision to scale beyond pilot.
 
 ### Infrastructure
 
