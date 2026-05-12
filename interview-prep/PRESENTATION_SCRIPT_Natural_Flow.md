@@ -24,9 +24,9 @@ And the biggest issue: local fixes harm downstream weeks. When you expedite a lo
 
 So I designed a six-agent system, and I want to be clear upfront about where I use LLMs and where I don't, because that's critical to making this work in production.
 
-**Agent 1 is Data Quality**—not exciting, but critical. I use Great Expectations with Pydantic to validate data freshness, check keys exist, and run sanity checks. For W1, if MES data is over 10 minutes old, the system blocks auto-execution and shows a "MANUAL MODE" banner. Stale data is worse than no data—you'll make the wrong decision with confidence.
+**Agent 1 is Data Quality**—not exciting, but critical. I use Great Expectations with Pydantic to validate data freshness, check keys exist, and run sanity checks. For W1, if MES data is over 30 minutes old, the system blocks auto-execution and shows a "MANUAL MODE" banner. Stale data is worse than no data—you'll make the wrong decision with confidence.
 
-**Agent 2 is Risk Detection**—this is *not* an LLM. It's custom Python scoring because I need speed. Under 100 milliseconds on every refresh, and LLM takes 1 to 3 seconds. So I use NumPy on cached data: OTIF gap times WIP position times capacity times product mix. Simple math, fast, and easy to debug.
+**Agent 2 is Risk Detection**—this is *not* an LLM. It's custom Python with ML for speed. Under 100 milliseconds on every refresh, and LLM takes 1 to 3 seconds. I use a Random Forest model to predict completion times—this approach achieves 92-94% accuracy in production. Then NumPy calculates five risk factors: OTIF gap from ML prediction, WIP position, capacity utilization, product mix with UPH-weighted demand, and cross-week impact. Fast, deterministic, and I can show exactly why each lot got flagged.
 
 **Agent 3 is the Cause Classifier**—this is where I use an LLM. Once the system detects a high-severity risk, I need to understand why. Is it downtime? UPH degradation? A queue bottleneck? The system retrieves the top 5 similar past incidents, then asks the LLM to classify into 6 categories using Pydantic for structured output. Temperature is 0.1—I want consistent answers, not creative ones.
 
@@ -48,8 +48,6 @@ This cuts compute costs significantly and prevents alert fatigue. If you ping pl
 
 Let me cover failure modes because this shows production thinking, not just whiteboard design.
 
-If Kafka goes down, the system falls back to PostgreSQL CDC with a 30-second lag, and it puts up a "DEGRADED MODE" banner so people know the data is slightly behind.
-
 If LLM times out—and it will—the system retries three times, then escalates to a human. The system doesn't fail silently or block forever.
 
 If the system gets stale data beyond the threshold, it blocks auto-execute. Full stop. Better to have humans make decisions with context than have the agent make confident decisions on bad data.
@@ -66,13 +64,13 @@ Let's talk about data architecture. Most AI projects assume clean data just exis
 
 The system ingests from four primary sources:
 
-**MES** comes in via CDC (change data capture) streaming into Kafka. Avro format with Schema Registry. 5-minute batches for W1—that's as fast as MES can go without flooding us with events.
+**MES** comes in via CDC (change data capture) streaming into Kafka. Avro format with Schema Registry. Batch updates every 15-30 minutes—sufficient for Risk Detection's 2-hour refresh cadence.
 
-**Equipment** comes from MQTT into Kafka. Event-driven, under 100 milliseconds, Protobuf format. Every time a tool changes state—up, down, idle—we get an event. This is true real-time because equipment downtime is the top cause of W1 misses.
+**Equipment** comes from MQTT into Kafka. Event-driven, updates within minutes. Critical events like tool down at bottleneck trigger immediate Slack alerts to maintenance—that's the real-time path. Data ingestion runs on a near real-time schedule since Risk Detection only refreshes every 2 hours.
 
 **ERP** is daily. Airflow DAG dumps to S3, converts to Parquet, streams into Kafka on a daily schedule. Why not more often? Because ERP only updates once daily. More frequent polling wastes API calls.
 
-**Quality** comes from REST API, hourly batch plus real-time alerts for critical defects. When scrap spikes, we get an immediate alert.
+**Quality** comes from REST API, hourly batch plus immediate alerts for critical defects. When scrap spikes, we get an immediate Slack alert to quality engineers—that's real-time alerting, not data ingestion.
 
 ### Key Tables
 
@@ -102,7 +100,7 @@ The number of retrieved incidents could be tuned based on context needs and accu
 
 The system runs Great Expectations on every ingestion.
 
-**Freshness**: W1 and W2 MES data must meet freshness thresholds. If not, the system alerts and blocks auto-execute. W3-W4 have longer thresholds.
+**Freshness**: W1 MES data must be under 30 minutes old. If not, the system alerts and blocks auto-execute. W2 allows up to 1 hour, W3-W4 have longer thresholds.
 
 **Referential integrity**: every lot_id must exist in route_master. If not, the system quarantines it for review.
 
@@ -152,7 +150,7 @@ Once compiled, you can invoke it and visualize it. When something fails, the age
 
 **Data Quality Agent**: LangChain DataLoader plus Great Expectations. Great Expectations has 300+ built-in checks. I compose these instead of writing custom validation.
 
-**Risk Detection Agent**: Custom Python, not an LLM. I need under 100 milliseconds per refresh. LLM takes 1-3 seconds. I use NumPy: weighted sum of features. Fast, deterministic, and easy to explain why something got flagged.
+**Risk Detection Agent**: Custom Python with ML, not an LLM. I need under 100 milliseconds per refresh. LLM takes 1-3 seconds. I use a Random Forest model for time-to-completion prediction—this approach achieves 92-94% accuracy in production. Then NumPy vectorized calculations for risk scoring: OTIF gap from ML prediction, WIP position, capacity utilization, product mix competition with UPH-weighted demand, and cross-week impact. Five factors combined with weighted sum. Fast, deterministic, product mix aware, and I can show exactly why each lot got flagged.
 
 **Cause Classifier**: LLMChain with Pydantic. RAG retrieves top 5 incidents, the system passes them to LLM, and it outputs a RootCauseAnalysis model. That enforces 6 categories, confidence 0-1, evidence list, and recommendation. If it outputs an invalid category, Pydantic catches it and the system retries.
 
@@ -280,7 +278,7 @@ Six key technical decisions:
 
 **2. OR-Tools over LLM**: LLMs make mistakes on math. OR-Tools proves W2-W4 won't be harmed.
 
-**3. Custom Python for risk**: Latency. W1 needs under 100ms. LLM takes 1-3 seconds.
+**3. ML plus NumPy for risk**: Latency. W1 needs under 100ms per refresh for 200 lots. Random Forest predicts completion times, NumPy vectorizes risk scoring with five factors including product mix and cross-week impact. LLM would take 6 minutes for 200 lots.
 
 **4. Hash-chained audit**: Quality audits need tamper-evident trails. SHA-256 chaining shows alterations.
 
